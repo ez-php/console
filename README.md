@@ -1,11 +1,11 @@
-# ezphp/console
+# ez-php/console
 
 Lightweight console infrastructure for PHP — command dispatcher, argument parser, and colored output helpers.
 
 ## Installation
 
 ```bash
-composer require ezphp/console
+composer require ez-php/console
 ```
 
 ## Usage

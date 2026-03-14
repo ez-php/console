@@ -10,10 +10,10 @@
     }
   ],
   "keywords": ["console", "cli", "command", "terminal", "php"],
-  "homepage": "https://github.com/ezphp/console",
+  "homepage": "https://github.com/ez-php/console",
   "support": {
-    "issues": "https://github.com/ezphp/console/issues",
-    "source": "https://github.com/ezphp/console"
+    "issues": "https://github.com/ez-php/console/issues",
+    "source": "https://github.com/ez-php/console"
   },
   "require": {
     "php": "^8.5"

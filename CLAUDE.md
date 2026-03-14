@@ -86,7 +86,7 @@ When creating a new module or `CLAUDE.md` anywhere in this repository:
 
 **CLAUDE.md structure:**
 - Start with the full content of `CODING_GUIDELINES.md`, verbatim
-- Then add `---` followed by `# Package: ezphp/<name>` (or `# Directory: <name>`)
+- Then add `---` followed by `# Package: ez-php/<name>` (or `# Directory: <name>`)
 - Module-specific section must cover:
   - Source structure (file tree with one-line descriptions per file)
   - Key classes and their responsibilities
@@ -100,11 +100,11 @@ When creating a new module or `CLAUDE.md` anywhere in this repository:
 **Docker setup:** copy `docker-compose.yml`, `docker/`, `.env.example` and `start.sh` from the repository root and adapt them for the module (service names, ports, required services). Use a unique `DB_PORT` in `.env.example` that is not used by any other package — increment by one per package starting with `3306` (root).
 ---
 
-# Package: ezphp/console
+# Package: ez-php/console
 
 Minimal console infrastructure — command dispatch, argument/option parsing, and ANSI output helpers.
 
-This package is a **zero-framework dependency** standalone library. It has no knowledge of the Application, Container, or any other ez-php package. The framework wires it up via `ConsoleServiceProvider` in `ezphp/framework`.
+This package is a **zero-framework dependency** standalone library. It has no knowledge of the Application, Container, or any other ez-php package. The framework wires it up via `ConsoleServiceProvider` in `ez-php/framework`.
 
 ---
 
@@ -197,7 +197,7 @@ Static helpers for terminal output. All methods write a trailing `\n`.
 
 ## Design Decisions and Constraints
 
-- **Zero framework dependencies** — This package must remain usable without `ezphp/framework`. It must not import Application, Container, Config, or any other framework class. Framework integration is the responsibility of `ConsoleServiceProvider` in `ezphp/framework`.
+- **Zero framework dependencies** — This package must remain usable without `ez-php/framework`. It must not import Application, Container, Config, or any other framework class. Framework integration is the responsibility of `ConsoleServiceProvider` in `ez-php/framework`.
 - **`--help` is handled by Console, not commands** — Commands never see `--help` in their `$args`. This keeps command logic clean and ensures consistent help behaviour across all commands.
 - **Static `Output` methods** — Output is treated as a terminal utility, not an injectable service. This keeps command implementations simple (`Output::success(...)` vs. constructor-injected output object). If testability of output becomes a concern, capture via output buffering in tests.
 - **`Input` is not injected by Console** — `Console` passes the raw `$args` array to `handle()`. Commands construct their own `Input` from it. This keeps `Console` decoupled from `Input` and lets commands that don't need parsing skip the allocation.
@@ -220,9 +220,9 @@ Static helpers for terminal output. All methods write a trailing `\n`.
 
 | Concern | Where it belongs |
 |---|---|
-| Concrete commands (migrate, make:*) | `ezphp/framework` (`src/Console/Command/`) |
-| Wiring Console into the Application | `ezphp/framework` (`ConsoleServiceProvider`) |
-| Interactive prompts (readline, question/confirm) | Future `ezphp/console` extension or application layer |
+| Concrete commands (migrate, make:*) | `ez-php/framework` (`src/Console/Command/`) |
+| Wiring Console into the Application | `ez-php/framework` (`ConsoleServiceProvider`) |
+| Interactive prompts (readline, question/confirm) | Future `ez-php/console` extension or application layer |
 | Progress bars or tables | Application layer or a future output extension |
-| Scheduled / cron commands | `ezphp/queue` or application layer |
-| Coloured log output for HTTP requests | `ezphp/logging` |
+| Scheduled / cron commands | `ez-php/queue` or application layer |
+| Coloured log output for HTTP requests | `ez-php/logging` |
