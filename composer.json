@@ -1,6 +1,6 @@
 {
   "name": "ez-php/console",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "description": "Lightweight console infrastructure for PHP — command dispatcher, argument parser, and colored output helpers",
   "type": "library",
   "license": "MIT",
@@ -21,6 +21,7 @@
   },
   "require-dev": {
     "ez-php/docker": "0.*",
+    "ez-php/testing": "0.*",
     "phpunit/phpunit": "^13.0",
     "phpstan/phpstan": "^2.1",
     "friendsofphp/php-cs-fixer": "^3.94",
