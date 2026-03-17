@@ -124,4 +124,124 @@ final class InputTest extends TestCase
         $this->assertSame('', $input->option('anything'));
         $this->assertFalse($input->hasFlag('anything'));
     }
+
+    /**
+     * @return void
+     */
+    public function test_short_flag_is_parsed(): void
+    {
+        $input = new Input(['-v']);
+
+        $this->assertTrue($input->hasShortFlag('v'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_combined_short_flags_are_parsed(): void
+    {
+        $input = new Input(['-vf']);
+
+        $this->assertTrue($input->hasShortFlag('v'));
+        $this->assertTrue($input->hasShortFlag('f'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_short_option_with_equals_is_parsed(): void
+    {
+        $input = new Input(['-n=Alice']);
+
+        $this->assertSame('Alice', $input->shortOption('n'));
+        $this->assertTrue($input->hasShortFlag('n'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_short_flag_only_returns_empty_string_from_short_option(): void
+    {
+        $input = new Input(['-v']);
+
+        $this->assertSame('', $input->shortOption('v'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_short_option_returns_default_when_absent(): void
+    {
+        $input = new Input([]);
+
+        $this->assertSame('fallback', $input->shortOption('n', 'fallback'));
+        $this->assertSame('', $input->shortOption('n'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_has_short_flag_returns_false_when_absent(): void
+    {
+        $input = new Input([]);
+
+        $this->assertFalse($input->hasShortFlag('x'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_short_flags_are_not_included_in_arguments(): void
+    {
+        $input = new Input(['-v', 'foo', '-f', 'bar']);
+
+        $this->assertSame(['foo', 'bar'], $input->arguments());
+    }
+
+    /**
+     * @return void
+     */
+    public function test_short_options_do_not_affect_long_options(): void
+    {
+        $input = new Input(['-v']);
+
+        $this->assertFalse($input->hasFlag('v'));
+        $this->assertSame('', $input->option('v'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_long_options_do_not_affect_short_options(): void
+    {
+        $input = new Input(['--verbose']);
+
+        $this->assertFalse($input->hasShortFlag('verbose'));
+        $this->assertSame('', $input->shortOption('verbose'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_standalone_hyphen_is_treated_as_positional_argument(): void
+    {
+        $input = new Input(['-']);
+
+        $this->assertSame(['-'], $input->arguments());
+        $this->assertFalse($input->hasShortFlag('-'));
+    }
+
+    /**
+     * @return void
+     */
+    public function test_mixed_short_and_long_options_and_arguments(): void
+    {
+        $input = new Input(['foo', '-v', '--name=Bob', '-f', 'bar', '-x=42']);
+
+        $this->assertSame(['foo', 'bar'], $input->arguments());
+        $this->assertTrue($input->hasShortFlag('v'));
+        $this->assertTrue($input->hasShortFlag('f'));
+        $this->assertSame('42', $input->shortOption('x'));
+        $this->assertSame('Bob', $input->option('name'));
+    }
 }
