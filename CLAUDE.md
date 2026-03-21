@@ -145,7 +145,7 @@ Only set a port for services the module actually uses. Modules without external 
 
 # Package: ez-php/console
 
-Minimal console infrastructure — command dispatch, argument/option parsing, and ANSI output helpers.
+Console infrastructure — command dispatch, argument/option parsing, ANSI output helpers, interactive prompts, progress bars, ASCII tables, typed command definitions, and command aliasing.
 
 This package is a **zero-framework dependency** standalone library. It has no knowledge of the Application, Container, or any other ez-php package. The framework wires it up via `ConsoleServiceProvider` in `ez-php/framework`.
 
@@ -155,16 +155,29 @@ This package is a **zero-framework dependency** standalone library. It has no kn
 
 ```
 src/
-├── CommandInterface.php   — Contract for all console commands: getName/getDescription/getHelp/handle
-├── Console.php            — Command registry and dispatcher; parses argv, routes to command, prints usage
-├── Input.php              — Parses a raw argv token list into positional arguments and named options/flags
-└── Output.php             — Static helpers for colored ANSI terminal output (line/info/success/error/warning/colorize)
+├── CommandInterface.php      — Contract for all console commands: getName/getDescription/getHelp/handle
+├── HasDefinition.php         — Optional interface: commands expose a CommandDefinition for structured --help
+├── AliasedCommand.php        — Wraps a CommandInterface and exposes it under a different name
+├── Console.php               — Command registry and dispatcher; parses argv, routes to command, prints usage
+├── Input.php                 — Parses a raw argv token list into positional arguments and named options/flags
+├── Output.php                — Static helpers: colored ANSI output, ASCII table, ProgressBar factory
+├── ProgressBar.php           — Renders a terminal progress bar to stdout via carriage return
+├── Prompt.php                — Interactive prompts: ask(), confirm(), choice() — reads from InputStreamInterface
+├── InputStreamInterface.php  — Abstraction over a readable line stream (used by Prompt; injected for testing)
+├── StdinInputStream.php      — InputStreamInterface implementation that reads from STDIN
+├── CommandDefinition.php     — Fluent builder for argument + option declarations (used by HasDefinition commands)
+├── ArgumentDefinition.php    — Value object: a single positional argument (name, description, required flag)
+└── OptionDefinition.php      — Value object: a single named option (name, short alias, description)
 
 tests/
-├── TestCase.php                  — Base PHPUnit test case
-├── Console/ConsoleTest.php       — Covers Console: dispatch, --help, unknown command, empty argv
-├── Console/InputTest.php         — Covers Input: positional args, --flag, --key=value, defaults
-└── Console/OutputTest.php        — Covers Output: stdout/stderr output, ANSI codes
+├── TestCase.php                        — Base PHPUnit test case
+├── Console/ConsoleTest.php             — Covers Console: dispatch, --help, HasDefinition rendering, unknown command
+├── Console/InputTest.php               — Covers Input: positional args, --flag, --key=value, short flags
+├── Console/OutputTest.php              — Covers Output: ANSI output, ASCII table, progressBar factory
+├── Console/ProgressBarTest.php         — Covers ProgressBar: advance, finish, percentage, overflow
+├── Console/PromptTest.php              — Covers Prompt: ask, confirm, choice — injected MemoryInputStream
+├── Console/CommandDefinitionTest.php   — Covers CommandDefinition + ArgumentDefinition + OptionDefinition
+└── Console/AliasedCommandTest.php      — Covers AliasedCommand: name override, delegation, Console dispatch
 ```
 
 ---
@@ -201,6 +214,8 @@ Command registry and dispatcher. Constructed with a `list<CommandInterface>`.
 
 Usage listing format: `ez <command> [arguments]` followed by each command name (padded to 24 chars, green) and its description.
 
+When printing command help, if the command implements `HasDefinition`, Console also renders structured Arguments and Options sections below the free-text help.
+
 ---
 
 ### Input (`src/Input.php`)
@@ -223,7 +238,7 @@ Parses a raw `list<string>` of argv tokens (everything after the command name) i
 
 ### Output (`src/Output.php`)
 
-Static helpers for terminal output. All methods write a trailing `\n`.
+Static helpers for terminal output. All text methods write a trailing `\n`.
 
 | Method | Stream | ANSI color |
 |---|---|---|
@@ -233,8 +248,84 @@ Static helpers for terminal output. All methods write a trailing `\n`.
 | `warning(string $text)` | stdout | yellow (33) |
 | `error(string $text)` | **stderr** | red (31) |
 | `colorize(string $text, int $code): string` | — | wraps in `\e[{code}m…\e[0m` |
+| `table(list<string> $headers, list<list<string>> $rows): void` | stdout | none — renders an ASCII table |
+| `progressBar(int $total, int $width = 40): ProgressBar` | — | factory that creates a `ProgressBar` instance |
 
-`error()` writes to `STDERR`; all others write to `STDOUT`. `colorize()` is a pure string transformer used internally by `Console` for formatting the usage listing.
+`error()` writes to `STDERR`; all others write to `STDOUT`. `colorize()` is a pure string transformer.
+
+---
+
+### ProgressBar (`src/ProgressBar.php`)
+
+Renders a terminal progress bar in-place using a carriage return (`\r`).
+
+```php
+$bar = Output::progressBar(100);
+foreach ($items as $item) {
+    process($item);
+    $bar->advance();
+}
+$bar->finish(); // moves to new line
+```
+
+| Method | Behaviour |
+|---|---|
+| `advance(int $step = 1): void` | Advance by $step (capped at total), redraw bar |
+| `finish(): void` | Set progress to 100%, redraw, write newline |
+
+---
+
+### Prompt (`src/Prompt.php`)
+
+Interactive prompts that read from an `InputStreamInterface` (defaults to STDIN).
+
+```php
+$prompt = new Prompt();
+$name  = $prompt->ask('What is your name?');
+$ok    = $prompt->confirm('Continue?');
+$color = $prompt->choice('Pick a color', ['red', 'green', 'blue']);
+```
+
+Inject a custom stream for testing:
+```php
+$prompt = new Prompt(new class(['Alice', 'y', '1']) implements InputStreamInterface { ... });
+```
+
+| Method | Behaviour |
+|---|---|
+| `ask(string $question): string` | Prompt + read trimmed line |
+| `confirm(string $question): bool` | Prompt + `[y/N]`; `true` for `y`/`yes` |
+| `choice(string $question, array $options): string` | Numbered list; returns selected value; throws `InvalidArgumentException` on invalid index |
+
+---
+
+### CommandDefinition + HasDefinition
+
+`HasDefinition` is an optional interface for commands that expose structured argument/option metadata:
+
+```php
+class MyCommand implements CommandInterface, HasDefinition {
+    public function getDefinition(): CommandDefinition {
+        return (new CommandDefinition())
+            ->argument('name', 'The user name')
+            ->option('force', 'f', 'Skip confirmation');
+    }
+}
+```
+
+`Console` detects `HasDefinition` and renders Arguments/Options sections in `--help` output.
+
+---
+
+### AliasedCommand (`src/AliasedCommand.php`)
+
+Wraps any `CommandInterface` and overrides `getName()` to expose it under a different name. All other calls delegate to the inner command.
+
+```php
+$commands = [
+    new AliasedCommand($app->make(MigrateCommand::class), 'db:migrate'),
+];
+```
 
 ---
 
@@ -242,19 +333,20 @@ Static helpers for terminal output. All methods write a trailing `\n`.
 
 - **Zero framework dependencies** — This package must remain usable without `ez-php/framework`. It must not import Application, Container, Config, or any other framework class. Framework integration is the responsibility of `ConsoleServiceProvider` in `ez-php/framework`.
 - **`--help` is handled by Console, not commands** — Commands never see `--help` in their `$args`. This keeps command logic clean and ensures consistent help behaviour across all commands.
-- **Static `Output` methods** — Output is treated as a terminal utility, not an injectable service. This keeps command implementations simple (`Output::success(...)` vs. constructor-injected output object). If testability of output becomes a concern, capture via output buffering in tests.
-- **`Input` is not injected by Console** — `Console` passes the raw `$args` array to `handle()`. Commands construct their own `Input` from it. This keeps `Console` decoupled from `Input` and lets commands that don't need parsing skip the allocation.
+- **Static `Output` methods** — Output is treated as a terminal utility, not an injectable service. This keeps command implementations simple (`Output::success(...)` vs. constructor-injected output object). Capture via output buffering in tests.
+- **`Input` is not injected by Console** — `Console` passes the raw `$args` array to `handle()`. Commands construct their own `Input` from it.
 - **Exit codes are the command's responsibility** — `Console::run()` returns whatever `handle()` returns verbatim. The application's entry point (`artisan`/`ez`) should pass this to `exit()`.
-- **No command grouping or aliases** — Command names are plain strings. Grouping conventions (e.g. `make:*`) are by naming only, not by structure. Adding aliases or subcommand routing is out of scope.
+- **`Prompt` uses `InputStreamInterface`** — Avoids PHP's unrepresentable `resource` type; makes prompts fully testable in-process without piping stdin.
+- **`HasDefinition` is optional** — `CommandInterface` is unchanged. Commands that don't need structured help simply skip the interface. No breaking change.
+- **`AliasedCommand` is a wrapper, not a registry feature** — Aliases are registered as full entries in the `Console` command list. This avoids complicating `Console`'s dispatch logic.
 
 ---
 
 ## Testing Approach
 
 - **No external infrastructure required** — All tests are purely in-process. No filesystem, no database, no network.
-- **Output testing** — Use `$this->expectOutputString()` or output buffering (`ob_start` / `ob_get_clean()`) to assert what `Console` and `Output` write to stdout. For `STDERR` output, redirect or capture within the test.
-- **`Input` tests** — Construct `Input` with a raw token array and assert `argument()`, `option()`, and `hasFlag()` results directly.
-- **`Console` tests** — Pass a minimal `list<CommandInterface>` (anonymous class or stub) and a crafted `$argv` array to `run()`. Assert the return code and any captured output.
+- **Output testing** — Use output buffering (`ob_start` / `ob_get_clean()`) to assert what `Console`, `Output`, `ProgressBar`, and `Prompt` write to stdout.
+- **Prompt testing** — Inject an anonymous `InputStreamInterface` implementation backed by a `list<string>` to simulate user input without touching STDIN.
 - **`#[UsesClass]` required** — PHPUnit is configured with `beStrictAboutCoverageMetadata=true`. Declare indirectly used classes with `#[UsesClass]`.
 
 ---
@@ -265,8 +357,6 @@ Static helpers for terminal output. All methods write a trailing `\n`.
 |---|---|
 | Concrete commands (migrate, make:*) | `ez-php/framework` (`src/Console/Command/`) |
 | Wiring Console into the Application | `ez-php/framework` (`ConsoleServiceProvider`) |
-| Interactive prompts (readline, question/confirm) | Future `ez-php/console` extension or application layer |
-| Progress bars or tables | Application layer or a future output extension |
-| Scheduled / cron commands | `ez-php/queue` or application layer |
+| Command scheduling / cron integration | `ez-php/framework` (`Schedule/Scheduler`, `Command/ScheduleRunCommand`) |
 | Coloured log output for HTTP requests | `ez-php/logging` |
 

@@ -5,7 +5,9 @@ declare(strict_types=1);
 namespace Tests\Console;
 
 use EzPhp\Console\Output;
+use EzPhp\Console\ProgressBar;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\UsesClass;
 use Tests\TestCase;
 
 /**
@@ -14,6 +16,7 @@ use Tests\TestCase;
  * @package Tests\Console
  */
 #[CoversClass(Output::class)]
+#[UsesClass(ProgressBar::class)]
 final class OutputTest extends TestCase
 {
     /**
@@ -110,5 +113,91 @@ final class OutputTest extends TestCase
         $this->assertStringContainsString('error message', $colored);
 
         fclose($stderr);
+    }
+
+    // ── table ─────────────────────────────────────────────────────────────────
+
+    /**
+     * @return void
+     */
+    public function test_table_renders_header_and_row(): void
+    {
+        ob_start();
+        Output::table(['Name', 'Age'], [['Alice', '30']]);
+        $out = (string) ob_get_clean();
+
+        $this->assertStringContainsString('Name', $out);
+        $this->assertStringContainsString('Age', $out);
+        $this->assertStringContainsString('Alice', $out);
+        $this->assertStringContainsString('30', $out);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_table_renders_border_separators(): void
+    {
+        ob_start();
+        Output::table(['Col'], [['val']]);
+        $out = (string) ob_get_clean();
+
+        $this->assertStringContainsString('+', $out);
+        $this->assertStringContainsString('-', $out);
+        $this->assertStringContainsString('|', $out);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_table_pads_columns_to_widest_cell(): void
+    {
+        ob_start();
+        Output::table(['A'], [['short'], ['much-longer-value']]);
+        $out = (string) ob_get_clean();
+
+        // The column must be wide enough to fit 'much-longer-value'
+        $this->assertStringContainsString('much-longer-value', $out);
+        $this->assertStringContainsString('short', $out);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_table_with_no_rows_renders_header_only(): void
+    {
+        ob_start();
+        Output::table(['ID', 'Email'], []);
+        $out = (string) ob_get_clean();
+
+        $this->assertStringContainsString('ID', $out);
+        $this->assertStringContainsString('Email', $out);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_table_with_empty_headers_produces_no_output(): void
+    {
+        ob_start();
+        Output::table([], [['a', 'b']]);
+        $out = (string) ob_get_clean();
+
+        $this->assertSame('', $out);
+    }
+
+    // ── progressBar factory ───────────────────────────────────────────────────
+
+    /**
+     * @return void
+     */
+    public function test_progress_bar_factory_returns_progress_bar(): void
+    {
+        $bar = Output::progressBar(10);
+
+        $this->assertInstanceOf(ProgressBar::class, $bar);
+
+        ob_start();
+        $bar->finish();
+        ob_get_clean();
     }
 }

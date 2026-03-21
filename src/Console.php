@@ -85,5 +85,45 @@ final readonly class Console
         if ($help !== '') {
             echo "\n" . $help . "\n";
         }
+
+        if (!($command instanceof HasDefinition)) {
+            return;
+        }
+
+        $def = $command->getDefinition();
+        $arguments = $def->getArguments();
+        $options = $def->getOptions();
+
+        if ($arguments !== []) {
+            echo "\n" . Output::colorize('Arguments:', 33) . "\n";
+
+            foreach ($arguments as $arg) {
+                $required = $arg->required ? ' (required)' : ' (optional)';
+                echo sprintf(
+                    '  %s  %s%s' . "\n",
+                    Output::colorize(sprintf('%-20s', '<' . $arg->name . '>'), 32),
+                    $arg->description,
+                    $required,
+                );
+            }
+        }
+
+        if ($options !== []) {
+            echo "\n" . Output::colorize('Options:', 33) . "\n";
+
+            foreach ($options as $opt) {
+                $flag = '--' . $opt->name;
+
+                if ($opt->short !== '') {
+                    $flag .= ', -' . $opt->short;
+                }
+
+                echo sprintf(
+                    '  %s  %s' . "\n",
+                    Output::colorize(sprintf('%-20s', $flag), 32),
+                    $opt->description,
+                );
+            }
+        }
     }
 }

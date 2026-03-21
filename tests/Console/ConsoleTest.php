@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Tests\Console;
 
+use EzPhp\Console\ArgumentDefinition;
+use EzPhp\Console\CommandDefinition;
 use EzPhp\Console\CommandInterface;
 use EzPhp\Console\Console;
+use EzPhp\Console\HasDefinition;
+use EzPhp\Console\OptionDefinition;
 use EzPhp\Console\Output;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\UsesClass;
@@ -18,6 +22,9 @@ use Tests\TestCase;
  */
 #[CoversClass(Console::class)]
 #[UsesClass(Output::class)]
+#[UsesClass(CommandDefinition::class)]
+#[UsesClass(ArgumentDefinition::class)]
+#[UsesClass(OptionDefinition::class)]
 final class ConsoleTest extends TestCase
 {
     /**
@@ -317,6 +324,55 @@ final class ConsoleTest extends TestCase
 
         // --help triggers help, handle not called; but if it were, --help would be stripped
         $this->assertSame([], $command->received);
+    }
+
+    /**
+     * @return void
+     */
+    public function test_help_includes_arguments_and_options_for_has_definition_command(): void
+    {
+        $command = new class () implements CommandInterface, HasDefinition {
+            public function getName(): string
+            {
+                return 'greet';
+            }
+
+            public function getDescription(): string
+            {
+                return 'Greet someone';
+            }
+
+            public function getHelp(): string
+            {
+                return '';
+            }
+
+            /** @param list<string> $args */
+            public function handle(array $args): int
+            {
+                return 0;
+            }
+
+            public function getDefinition(): CommandDefinition
+            {
+                return (new CommandDefinition())
+                    ->argument('name', 'Person to greet')
+                    ->option('shout', 's', 'Output in uppercase');
+            }
+        };
+
+        $console = new Console([$command]);
+
+        ob_start();
+        $code = $console->run(['ez', 'greet', '--help']);
+        $out = (string) ob_get_clean();
+
+        $this->assertSame(0, $code);
+        $this->assertStringContainsString('name', $out);
+        $this->assertStringContainsString('Person to greet', $out);
+        $this->assertStringContainsString('--shout', $out);
+        $this->assertStringContainsString('-s', $out);
+        $this->assertStringContainsString('Output in uppercase', $out);
     }
 
     /**
