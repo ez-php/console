@@ -28,7 +28,7 @@ final class ConsoleTest extends TestCase
      */
     private function makeCommand(string $name, int $exitCode = 0): CommandInterface
     {
-        return new class ($name, $exitCode) implements CommandInterface {
+        return new readonly class ($name, $exitCode) implements CommandInterface {
             /**
              * Constructor
              *
@@ -36,8 +36,8 @@ final class ConsoleTest extends TestCase
              * @param int    $exitCode
              */
             public function __construct(
-                private readonly string $commandName,
-                private readonly int $exitCode,
+                private string $commandName,
+                private int $exitCode,
             ) {
             }
 

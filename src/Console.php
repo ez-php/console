@@ -9,14 +9,14 @@ namespace EzPhp\Console;
  *
  * @package EzPhp\Console
  */
-final class Console
+final readonly class Console
 {
     /**
      * Console Constructor
      *
      * @param list<CommandInterface> $commands
      */
-    public function __construct(private readonly array $commands)
+    public function __construct(private array $commands)
     {
     }
 
