@@ -92,6 +92,10 @@ final class Output
      * Each row must contain the same number of cells as $headers.
      * Extra cells are ignored; missing cells are treated as empty strings.
      *
+     * Column widths are computed from the *visible* character length of each
+     * cell — ANSI escape sequences (color codes) are stripped before measuring
+     * so that colorized cells do not cause misalignment.
+     *
      * @param list<string>       $headers Column headers.
      * @param list<list<string>> $rows    Table rows.
      *
@@ -114,8 +118,9 @@ final class Output
         foreach ($rows as $row) {
             for ($i = 0; $i < $colCount; $i++) {
                 $cell = array_key_exists($i, $row) ? $row[$i] : '';
-                if (strlen($cell) > $widths[$i]) {
-                    $widths[$i] = strlen($cell);
+                $visible = self::visibleLength($cell);
+                if ($visible > $widths[$i]) {
+                    $widths[$i] = $visible;
                 }
             }
         }
@@ -138,12 +143,27 @@ final class Output
             $line = '|';
             for ($i = 0; $i < $colCount; $i++) {
                 $cell = array_key_exists($i, $row) ? $row[$i] : '';
-                $line .= ' ' . str_pad($cell, $widths[$i]) . ' |';
+                $line .= ' ' . self::padCell($cell, $widths[$i]) . ' |';
             }
             echo $line . "\n";
         }
 
         echo $border . "\n";
+    }
+
+    /**
+     * Create a new ProgressBar instance for the given total.
+     *
+     * Alias for progressBar() — matches the $output->progress(n) convention.
+     *
+     * @param int $total Total number of steps.
+     * @param int $width Width of the bar in characters (default: 40).
+     *
+     * @return ProgressBar
+     */
+    public static function progress(int $total, int $width = 40): ProgressBar
+    {
+        return new ProgressBar($total, $width);
     }
 
     /**
@@ -157,5 +177,32 @@ final class Output
     public static function progressBar(int $total, int $width = 40): ProgressBar
     {
         return new ProgressBar($total, $width);
+    }
+
+    /**
+     * Return the visible (display) length of a string, ignoring ANSI escape sequences.
+     *
+     * @param string $text
+     *
+     * @return int
+     */
+    private static function visibleLength(string $text): int
+    {
+        return strlen((string) preg_replace('/\e\[[0-9;]*m/', '', $text));
+    }
+
+    /**
+     * Pad a string to $width visible characters, accounting for ANSI escape sequences.
+     *
+     * @param string $text
+     * @param int    $width Target visible width.
+     *
+     * @return string
+     */
+    private static function padCell(string $text, int $width): string
+    {
+        $padding = $width - self::visibleLength($text);
+
+        return $padding > 0 ? $text . str_repeat(' ', $padding) : $text;
     }
 }

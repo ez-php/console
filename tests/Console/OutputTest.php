@@ -185,6 +185,34 @@ final class OutputTest extends TestCase
         $this->assertSame('', $out);
     }
 
+    // ── table with ANSI codes ─────────────────────────────────────────────────
+
+    /**
+     * @return void
+     */
+    public function test_table_handles_ansi_colored_cells_without_misalignment(): void
+    {
+        $coloredRan = Output::colorize('Ran', 32);
+        $coloredPending = Output::colorize('Pending', 33);
+
+        ob_start();
+        Output::table(['Status', 'Migration'], [
+            [$coloredRan, '2026_01_create_users.php'],
+            [$coloredPending, '2026_02_create_posts.php'],
+        ]);
+        $out = (string) ob_get_clean();
+
+        $this->assertStringContainsString('Ran', $out);
+        $this->assertStringContainsString('Pending', $out);
+        $this->assertStringContainsString('2026_01_create_users.php', $out);
+
+        // All border lines must be identical (consistent column widths).
+        $lines = array_filter(explode("\n", $out));
+        $borderLines = array_values(array_filter($lines, fn (string $l): bool => str_starts_with($l, '+')));
+        $this->assertGreaterThanOrEqual(2, count($borderLines));
+        $this->assertSame($borderLines[0], $borderLines[1]);
+    }
+
     // ── progressBar factory ───────────────────────────────────────────────────
 
     /**
@@ -199,5 +227,38 @@ final class OutputTest extends TestCase
         ob_start();
         $bar->finish();
         ob_get_clean();
+    }
+
+    // ── progress() alias ─────────────────────────────────────────────────────
+
+    /**
+     * @return void
+     */
+    public function test_progress_returns_progress_bar_instance(): void
+    {
+        $bar = Output::progress(50);
+
+        $this->assertInstanceOf(ProgressBar::class, $bar);
+
+        ob_start();
+        $bar->finish();
+        ob_get_clean();
+    }
+
+    /**
+     * @return void
+     */
+    public function test_progress_accepts_custom_width(): void
+    {
+        $bar = Output::progress(10, 20);
+
+        $this->assertInstanceOf(ProgressBar::class, $bar);
+
+        ob_start();
+        $bar->advance(5);
+        $out = (string) ob_get_clean();
+
+        // Bar should contain exactly 20 characters between [ and ]
+        $this->assertMatchesRegularExpression('/\[.{20}\]/', $out);
     }
 }
