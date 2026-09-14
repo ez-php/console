@@ -34,7 +34,7 @@ final class StdinInputStreamTest extends TestCase
      */
     private function readLinesInSubprocess(string $stdinContent, int $reads): array
     {
-        $autoloader = dirname(__DIR__) . '/vendor/autoload.php';
+        $autoloader = $this->findAutoloader();
 
         $script = sprintf(
             'require %s; $s = new \\EzPhp\\Console\\StdinInputStream();'
@@ -70,6 +70,42 @@ final class StdinInputStreamTest extends TestCase
         array_pop($parts);
 
         return $parts;
+    }
+
+    /**
+     * Locates a Composer autoloader usable by the subprocess.
+     *
+     * This module's own vendor/autoload.php only exists when composer
+     * install has run inside modules/console/ directly (standalone module
+     * CI, local module dev). In the monorepo's aggregated run, only the
+     * repository-root vendor/ is installed — modules/console/vendor/ is
+     * gitignored and absent from a fresh checkout — so fall back to the
+     * nearest ancestor vendor/autoload.php, matching how the parent
+     * PHPUnit process itself is bootstrapped.
+     *
+     * @return string
+     */
+    private function findAutoloader(): string
+    {
+        $moduleAutoloader = dirname(__DIR__) . '/vendor/autoload.php';
+        if (is_file($moduleAutoloader)) {
+            return $moduleAutoloader;
+        }
+
+        $dir = dirname(__DIR__);
+        while (true) {
+            $parent = dirname($dir);
+            if ($parent === $dir) {
+                break;
+            }
+            $dir = $parent;
+            $candidate = $dir . '/vendor/autoload.php';
+            if (is_file($candidate)) {
+                return $candidate;
+            }
+        }
+
+        self::fail('Could not locate a Composer autoloader for the subprocess.');
     }
 
     public function test_reads_single_line_with_trailing_newline(): void
