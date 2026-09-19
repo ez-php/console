@@ -116,6 +116,25 @@ $commands = [
 ];
 ```
 
+## Shell completion
+
+`CompletionGenerator` renders a bash or zsh completion script from a list of registered
+commands — command names always complete; commands implementing `HasDefinition` also get
+their long options completed:
+
+```php
+use EzPhp\Console\CompletionGenerator;
+
+$generator = new CompletionGenerator($commands); // list<CommandInterface>
+
+echo $generator->bash();  // source this, or place in /etc/bash_completion.d/
+echo $generator->zsh();   // place on $fpath as a file named _ez
+```
+
+In an ez-php application, `ez completion:generate bash` / `ez completion:generate zsh`
+(from `ez-php/framework`) prints this for every currently registered command — see that
+package's docs for the CLI command itself.
+
 ## Classes
 
 | Class | Description |
@@ -133,6 +152,7 @@ $commands = [
 | `CommandDefinition` | Fluent builder for argument + option declarations |
 | `ArgumentDefinition` | Value object: positional argument (name, description, required) |
 | `OptionDefinition` | Value object: named option (name, short alias, description) |
+| `CompletionGenerator` | Renders bash/zsh shell-completion scripts from a command list |
 
 ## License
 

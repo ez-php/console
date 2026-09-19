@@ -268,7 +268,8 @@ src/
 ├── StdinInputStream.php      — InputStreamInterface implementation that reads from STDIN
 ├── CommandDefinition.php     — Fluent builder for argument + option declarations (used by HasDefinition commands)
 ├── ArgumentDefinition.php    — Value object: a single positional argument (name, description, required flag)
-└── OptionDefinition.php      — Value object: a single named option (name, short alias, description)
+├── OptionDefinition.php      — Value object: a single named option (name, short alias, description)
+└── CompletionGenerator.php   — Renders bash/zsh shell-completion scripts from a list of registered commands, reusing HasDefinition metadata for per-command option completion
 
 tests/
 ├── TestCase.php                        — Base PHPUnit test case
@@ -278,7 +279,8 @@ tests/
 ├── Console/ProgressBarTest.php         — Covers ProgressBar: advance, finish, percentage, overflow
 ├── Console/PromptTest.php              — Covers Prompt: ask, confirm, choice — injected MemoryInputStream
 ├── Console/CommandDefinitionTest.php   — Covers CommandDefinition + ArgumentDefinition + OptionDefinition
-└── Console/AliasedCommandTest.php      — Covers AliasedCommand: name override, delegation, Console dispatch
+├── Console/AliasedCommandTest.php      — Covers AliasedCommand: name override, delegation, Console dispatch
+└── CompletionGeneratorTest.php         — Covers CompletionGenerator: bash/zsh command listing, program-name substitution, per-command option completion via HasDefinition, empty command list
 ```
 
 ---
@@ -430,6 +432,12 @@ $commands = [
 
 ---
 
+### CompletionGenerator (`src/CompletionGenerator.php`)
+
+Renders bash (`bash(string $programName = 'ez'): string`) and zsh (`zsh(string $programName = 'ez'): string`) shell-completion scripts from a `list<CommandInterface>` passed to the constructor. Command-name completion works for every command; per-command option completion (`--force`, `--dry-run`, …) is added only for commands implementing `HasDefinition` — commands without a definition still complete by name, just without their options. Framework core's `completion:generate` command (`framework/src/Console/Command/CompletionGenerateCommand.php`) is the only consumer, invoked with the same `$commands` list built for `ListCommand`/`Console` itself; this module ships the generator, not the command, since only an application actually knows its full command list.
+
+---
+
 ## Design Decisions and Constraints
 
 - **Zero framework dependencies** — This package must remain usable without `ez-php/framework`. It must not import Application, Container, Config, or any other framework class. Framework integration is the responsibility of `ConsoleServiceProvider` in `ez-php/framework`.
@@ -440,6 +448,7 @@ $commands = [
 - **`Prompt` uses `InputStreamInterface`** — Avoids PHP's unrepresentable `resource` type; makes prompts fully testable in-process without piping stdin.
 - **`HasDefinition` is optional** — `CommandInterface` is unchanged. Commands that don't need structured help simply skip the interface. No breaking change.
 - **`AliasedCommand` is a wrapper, not a registry feature** — Aliases are registered as full entries in the `Console` command list. This avoids complicating `Console`'s dispatch logic.
+- **`CompletionGenerator` only lists commands and (when available) their long options** — no positional-argument completion, no value completion for an option (e.g. suggesting queue names for `queue:work`'s positional argument). Argument/value completion would need per-command, per-argument hints that `CommandDefinition` doesn't carry today; the generator sticks to what the existing metadata already supports rather than inventing a second, richer definition format just for shell completion.
 
 ---
 
