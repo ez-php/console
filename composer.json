@@ -1,6 +1,6 @@
 {
     "name": "ez-php/console",
-    "version": "2.4.9",
+    "version": "2.4.10",
     "description": "Lightweight console infrastructure for PHP \u2014 command dispatcher, argument parser, and colored output helpers",
     "type": "library",
     "license": "MIT",
