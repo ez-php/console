@@ -8,7 +8,8 @@ namespace EzPhp\Console;
  * Interface InputStreamInterface
  *
  * Abstraction over a readable character stream, used by Prompt to read user input.
- * The default implementation reads from STDIN; tests inject a MemoryInputStream.
+ * The default implementation (StdinInputStream) reads from STDIN; tests inject an
+ * anonymous implementation that returns scripted lines.
  *
  * @package EzPhp\Console
  */

@@ -12,8 +12,8 @@ use PHPUnit\Framework\Attributes\CoversClass;
  *
  * StdinInputStream::readLine() reads the literal STDIN constant, which is
  * bound to the running process's real standard input and cannot be swapped
- * out in-process (unlike MemoryInputStream, used everywhere else Prompt is
- * tested). The only way to genuinely exercise it is to run it in a
+ * out in-process (unlike the scripted anonymous InputStreamInterface used
+ * everywhere else Prompt is tested). The only way to genuinely exercise it is to run it in a
  * subprocess with a piped stdin, via proc_open().
  *
  * @package Tests

@@ -18,7 +18,10 @@ use InvalidArgumentException;
  *   $color  = $prompt->choice('Pick a color', ['red', 'green', 'blue']);
  *
  * Inject a custom InputStreamInterface for testing:
- *   $prompt = new Prompt(new MemoryInputStream(['Alice', 'y', '1']));
+ *   $prompt = new Prompt(new class (['Alice', 'y', '1']) implements InputStreamInterface {
+ *       public function __construct(private array $lines) {}
+ *       public function readLine(): string { return (array_shift($this->lines) ?? '') . "\n"; }
+ *   });
  *
  * @package EzPhp\Console
  */
