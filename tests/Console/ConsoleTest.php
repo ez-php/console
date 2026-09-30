@@ -115,13 +115,18 @@ final class ConsoleTest extends TestCase
      */
     public function test_returns_1_for_unknown_command(): void
     {
-        $console = new Console([]);
+        $stderr = fopen('php://memory', 'w+');
+        $this->assertIsResource($stderr);
+        $console = new Console([], $stderr);
 
         ob_start();
         $code = $console->run(['ez', 'unknown']);
         ob_get_clean();
 
         $this->assertSame(1, $code);
+        rewind($stderr);
+        $this->assertSame("Unknown command: unknown\n\n", stream_get_contents($stderr));
+        fclose($stderr);
     }
 
     /**

@@ -52,13 +52,14 @@ final class Output
     /**
      * Write an error (red) line to stderr.
      *
-     * @param string $text
+     * @param string        $text
+     * @param resource|null $stream Where to write instead of STDERR (e.g. php://memory in tests).
      *
      * @return void
      */
-    public static function error(string $text): void
+    public static function error(string $text, mixed $stream = null): void
     {
-        fwrite(STDERR, "\e[31m$text\e[0m\n");
+        fwrite(is_resource($stream) ? $stream : STDERR, "\e[31m$text\e[0m\n");
     }
 
     /**

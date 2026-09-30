@@ -103,14 +103,12 @@ final class OutputTest extends TestCase
         $stderr = fopen('php://memory', 'w+');
         $this->assertIsResource($stderr);
 
-        // Redirect STDERR to memory stream to capture it
-        // Output::error() writes to STDERR — we just verify it doesn't throw
-        // and produces colored output via colorize()
-        $colored = Output::colorize('error message', 31);
-        Output::error('error message');
+        // The optional stream stands in for STDERR, so the line can be asserted
+        // instead of leaking into the test output.
+        Output::error('error message', $stderr);
 
-        $this->assertStringContainsString("\e[31m", $colored);
-        $this->assertStringContainsString('error message', $colored);
+        rewind($stderr);
+        $this->assertSame("\e[31merror message\e[0m\n", stream_get_contents($stderr));
 
         fclose($stderr);
     }

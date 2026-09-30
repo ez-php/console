@@ -15,9 +15,12 @@ final readonly class Console
      * Console Constructor
      *
      * @param list<CommandInterface> $commands
+     * @param resource|null          $errorStream Where "Unknown command" goes; null = STDERR.
      */
-    public function __construct(private array $commands)
-    {
+    public function __construct(
+        private array $commands,
+        private mixed $errorStream = null,
+    ) {
     }
 
     /**
@@ -48,7 +51,7 @@ final readonly class Console
             }
         }
 
-        fwrite(STDERR, "Unknown command: $name\n\n");
+        fwrite(is_resource($this->errorStream) ? $this->errorStream : STDERR, "Unknown command: $name\n\n");
         $this->printUsage();
 
         return 1;
