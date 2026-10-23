@@ -292,6 +292,9 @@ src/
 
 tests/
 ├── TestCase.php                        — Base PHPUnit test case
+├── StdinInputStreamTest.php  — readLine() on real STDIN, run in a proc_open() child with piped stdin
+├── OptionDefinitionTest.php  — Covers OptionDefinition
+├── ArgumentDefinitionTest.php  — Covers ArgumentDefinition
 ├── Console/ConsoleTest.php             — Covers Console: dispatch, --help, HasDefinition rendering, unknown command
 ├── Console/InputTest.php               — Covers Input: positional args, --flag, --key=value, short flags
 ├── Console/OutputTest.php              — Covers Output: ANSI output, ASCII table, progressBar factory
